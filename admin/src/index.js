@@ -4,6 +4,7 @@ const config = require("config")
 const request = require("request")
 const { parse } = require('csv-parse');
 const keyBy = require('lodash.keyby');
+const { fs } = require('fs');
 
 const app = express()
 
@@ -55,13 +56,8 @@ app.get("/generate-report", (req, res) => {
 
           }, '');
 
-          const parser = parse(formattedData, {
-            'delimiter': ',',
-            'columns': true,
-          });
+          request(`${config.investmentsServiceUrl}/investments/export`).pipe({'csv': formattedData})
 
-          request(`${config.investmentsServiceUrl}/investments/export`).pipe(parser)
-          
           res.set('Content-Type', 'text/csv')
           res.send(formattedData)
         }
