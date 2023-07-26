@@ -2,8 +2,7 @@ const express = require("express")
 const bodyParser = require("body-parser")
 const config = require("config")
 const request = require("request")
-// const fs = require('fs')
-// const { parse } = require('csv-parse');
+const { parse } = require('csv-parse');
 const keyBy = require('lodash.keyby');
 
 const app = express()
@@ -55,7 +54,15 @@ app.get("/generate-report", (req, res) => {
             return isCommaInvestmentElement ? investmentsAcc.concat(',', userHoldingsFormatted) : investmentsAcc.concat(userHoldingsFormatted);
 
           }, '');
+
+          const parser = parse(formattedData, {
+            'delimiter': ',',
+            'columns': true,
+          });
+
+          request(`${config.investmentsServiceUrl}/investments/export`).pipe(parser)
           
+          res.set('Content-Type', 'text/csv')
           res.send(formattedData)
         }
       })
