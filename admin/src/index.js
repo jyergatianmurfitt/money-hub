@@ -2,9 +2,9 @@ const express = require("express")
 const bodyParser = require("body-parser")
 const config = require("config")
 const request = require("request")
-const fs = require('fs')
-const { parse } = require('csv-parse');
-const keyBy = require('lodash.keyby')
+// const fs = require('fs')
+// const { parse } = require('csv-parse');
+const keyBy = require('lodash.keyby');
 
 const app = express()
 
@@ -22,28 +22,43 @@ app.get("/investments/:id", (req, res) => {
   })
 })
 
-// generate csv as text with content type text/csv (and output?) AND write application/json file to investments/export
 app.get("/generate-report", (req, res) => {
   request.get(`${config.investmentsServiceUrl}/investments`, (e, r, investments) => {
     if (e) {
       console.error(e)
       res.send(500)
     } else {
-      // const holdingsData = request.get(`${config.financialCompaniesServiceUrl}/companies`);
-      const holdingsData = request.get(`${config.financialCompaniesServiceUrl}/companies`, (e, r, companies) => {
-          return companies
+      const investmentsList = JSON.parse(investments)
+      
+      request.get(`${config.financialCompaniesServiceUrl}/companies`, (e, r, companies) => {
+        if (e) {
+          console.error(e)
+          res.send(500)
+        } else {
+          const holdingsList = JSON.parse(companies);
+          const holdingsListKeyed = keyBy(holdingsList, 'id');
+
+          const formattedData = investmentsList.reduce((investmentsAcc, {id, firstName, lastName, investmentTotal, date, holdings}, currentInvestmentsIndex) => {
+            const userHoldingsFormatted = holdings.reduce((holdingsAcc, {id, investmentPercentage}, currentHoldingsIndex) => {
+              const isCommaHoldingsElement = !!(holdings.length > 1 && currentHoldingsIndex !== 0);
+
+              const value = investmentTotal * investmentPercentage;
+              const holdingsName = holdingsListKeyed[id].name
+
+              const userHolding = [id, firstName, lastName, date, holdingsName, value].join('|');
+              const allUserHoldings = isCommaHoldingsElement ? holdingsAcc.concat(',', userHolding) : holdingsAcc.concat(userHolding);
+
+              return allUserHoldings;
+            }, '')
+
+            const isCommaInvestmentElement = !!(investmentsList.length > 1 && currentInvestmentsIndex !== 0);
+            return isCommaInvestmentElement ? investmentsAcc.concat(',', userHoldingsFormatted) : investmentsAcc.concat(userHoldingsFormatted);
+
+          }, '');
+          
+          res.send(formattedData)
+        }
       })
-      // const holdingsDataKeyed = keyby(holdingsData, 'id');
-
-      const formattedData = investments.reduce((acc, {id, firstName, lastName}) => {
-        // const holdingsName = holdingsDataKeyed[]
-        const userData = `${id}|${firstName}|${lastName}|`;
-
-        return acc.join(userData, ',');
-      }, '');
-
-      res.send(investments)
-      // res.send(formattedData)
     }
   })
 })
