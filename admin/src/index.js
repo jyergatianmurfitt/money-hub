@@ -2,9 +2,7 @@ const express = require("express")
 const bodyParser = require("body-parser")
 const config = require("config")
 const request = require("request")
-const { parse } = require('csv-parse');
 const keyBy = require('lodash.keyby');
-const { fs } = require('fs');
 
 const app = express()
 
@@ -56,7 +54,7 @@ app.get("/generate-report", (req, res) => {
 
           }, '');
 
-          request(`${config.investmentsServiceUrl}/investments/export`).pipe({'csv': formattedData})
+          request({ 'url': `${config.investmentsServiceUrl}/investments/export`, 'method': 'POST', 'application/json': {'csv': formattedData}})
 
           res.set('Content-Type', 'text/csv')
           res.send(formattedData)
