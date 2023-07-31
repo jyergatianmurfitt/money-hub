@@ -23,6 +23,8 @@
 
 #### How would you make this solution scale to millions of records?
 
+1. Add rate limiting
+
 1. Impliment cacheing
 
 1. Either use chunking to gather the data and return it in batches or paginate results or implement long polling
