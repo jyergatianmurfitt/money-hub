@@ -33,31 +33,27 @@ app.get("/generate-report", (req, res) => {
           console.error(e)
           res.send(500)
         } else {
-          const holdingsList = JSON.parse(companies);
-          const holdingsListKeyed = keyBy(holdingsList, 'id');
+          const companyNames = JSON.parse(companies);
+          const companyNamesKeyed = keyBy(companyNames, 'id');
 
-          const formattedData = investmentsList.reduce((investmentsAcc, {id, firstName, lastName, investmentTotal, date, holdings}, currentInvestmentsIndex) => {
-            const userHoldingsFormatted = holdings.reduce((holdingsAcc, {id, investmentPercentage}, currentHoldingsIndex) => {
-              const isCommaHoldingsElement = !!(holdings.length > 1 && currentHoldingsIndex !== 0);
-
+          const formattedData = investmentsList.map(({userId, firstName, lastName, investmentTotal, date, holdings}) => {
+            const userHoldingsFormatted = holdings.map(({id: holdingId, investmentPercentage}) => {
               const value = investmentTotal * investmentPercentage;
-              const holdingsName = holdingsListKeyed[id].name
+              const holdingsName = companyNamesKeyed[holdingId].name
 
-              const userHolding = [id, firstName, lastName, date, holdingsName, value].join('|');
-              const allUserHoldings = isCommaHoldingsElement ? holdingsAcc.concat(',', userHolding) : holdingsAcc.concat(userHolding);
+              return [userId, firstName, lastName, date, holdingsName, value].join(',');
+            }).join('\n')
 
-              return allUserHoldings;
-            }, '')
+            return userHoldingsFormatted;
+          }).join('\n');
 
-            const isCommaInvestmentElement = !!(investmentsList.length > 1 && currentInvestmentsIndex !== 0);
-            return isCommaInvestmentElement ? investmentsAcc.concat(',', userHoldingsFormatted) : investmentsAcc.concat(userHoldingsFormatted);
+          const csvString = `User, First Name, Last Name, Date, Holding, Value\n${formattedData}`
 
-          }, '');
-
-          request({ 'url': `${config.investmentsServiceUrl}/investments/export`, 'method': 'POST', 'application/json': {'csv': formattedData}})
-
+          request({ 'url': `${config.investmentsServiceUrl}/investments/export`, 'method': 'POST', 'application/json': {'csv': csvString}})
+          
           res.set('Content-Type', 'text/csv')
-          res.send(formattedData)
+          res.send(formattedData);
+          
         }
       })
     }
