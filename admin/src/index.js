@@ -2,7 +2,8 @@ const express = require("express")
 const bodyParser = require("body-parser")
 const config = require("config")
 const request = require("request")
-const keyBy = require('lodash.keyby');
+const axios = require('axios');
+const {formatInvestments} = require('./utils');
 
 const app = express()
 
@@ -20,45 +21,39 @@ app.get("/investments/:id", (req, res) => {
   })
 })
 
-app.get("/generate-report", (req, res) => {
-  request.get(`${config.investmentsServiceUrl}/investments`, (e, r, investments) => {
-    if (e) {
-      console.error(e)
-      res.send(500)
-    } else {
-      const investmentsList = JSON.parse(investments)
-      
-      request.get(`${config.financialCompaniesServiceUrl}/companies`, (e, r, companies) => {
-        if (e) {
-          console.error(e)
-          res.send(500)
-        } else {
-          const companyNames = JSON.parse(companies);
-          const companyNamesKeyed = keyBy(companyNames, 'id');
+app.get("/generate-report", async (_, res) => {
+  // fetch & format data
+  const investments = [];
+  const companies = [];
+  
+  await Promise.all([
+    axios.get(`${config.investmentsServiceUrl}/investments`),
+    axios.get(`${config.financialCompaniesServiceUrl}/companies`),
+  ]).then(([{data: investmentsData}, {data: companiesData}]) => {
+    investments.push(...investmentsData);
+    companies.push(...companiesData);
+  }).catch((e) => {
+    console.error(e);
+    res.sendStatus(500);
+  });
 
-          const formattedData = investmentsList.map(({userId, firstName, lastName, investmentTotal, date, holdings}) => {
-            const userHoldingsFormatted = holdings.map(({id: holdingId, investmentPercentage}) => {
-              const value = investmentTotal * investmentPercentage;
-              const holdingsName = companyNamesKeyed[holdingId].name
-
-              return [userId, firstName, lastName, date, holdingsName, value].join(',');
-            }).join('\n')
-
-            return userHoldingsFormatted;
-          }).join('\n');
-
-          const csvString = `User, First Name, Last Name, Date, Holding, Value\n${formattedData}`
-
-          request({ 'url': `${config.investmentsServiceUrl}/investments/export`, 'method': 'POST', 'application/json': {'csv': csvString}})
-          
-          res.set('Content-Type', 'text/csv')
-          res.send(formattedData);
-          
-        }
-      })
+  const formattedInvestments = formatInvestments(investments, companies);
+  
+  // post data to /investments/export
+  await axios.post(`${config.investmentsServiceUrl}/investments/export`, {csv: formattedInvestments}, {
+    headers: {
+      'Content-Type': 'application/json'
     }
-  })
-})
+  }).catch((e) => {
+    console.error(e);
+    res.sendStatus(500);
+  });
+
+  // return data to /generate-report
+  res.set('Content-Type', 'text/csv');
+  res.send(formattedInvestments);
+
+});
 
 app.listen(config.port, (err) => {
   if (err) {

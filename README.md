@@ -25,6 +25,8 @@
 
 1. Add rate limiting
 
+1. Use Loading balancing & CDNs
+
 1. Use cacheing
 
 1. Either use chunking to gather the data and return it in batches or paginate results
@@ -35,19 +37,11 @@
 
 #### What else would you have liked to improve given more time?
 
-1. Fix error preventing display of json on /generate-report route
-
 1. Add unit testing
 
 1. Use Ramda
 
-1. Use async-await for x2 fetches
-
-1. Move the x2 fetches onto the same level and handle unavailable data
-
-1. Add more useful error messages
-
-1. Separate the data formatting functionality into a utils file to clean up the main function
+1. Handle unavailable data / granular error handling e.g. if investments are available but company names are not, useful data could still be returned
 
 
 
