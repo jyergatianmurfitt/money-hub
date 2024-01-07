@@ -22,37 +22,27 @@ app.get("/investments/:id", (req, res) => {
 })
 
 app.get("/generate-report", async (_, res) => {
-  // fetch & format data
-  const investments = [];
-  const companies = [];
+  try {
+    const [{data: investments}, {data: companies}] = await Promise.all([
+      axios.get(`${config.investmentsServiceUrl}/investments`),
+      axios.get(`${config.financialCompaniesServiceUrl}/companies`),
+    ]);
   
-  await Promise.all([
-    axios.get(`${config.investmentsServiceUrl}/investments`),
-    axios.get(`${config.financialCompaniesServiceUrl}/companies`),
-  ]).then(([{data: investmentsData}, {data: companiesData}]) => {
-    investments.push(...investmentsData);
-    companies.push(...companiesData);
-  }).catch((e) => {
+    const formattedInvestments = formatInvestments(investments, companies);
+    
+    await axios.post(`${config.investmentsServiceUrl}/investments/export`, {csv: formattedInvestments}, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+  
+    res.set('Content-Type', 'text/csv');
+    res.send(formattedInvestments);
+  }
+  catch(e) {
     console.error(e);
     res.sendStatus(500);
-  });
-
-  const formattedInvestments = formatInvestments(investments, companies);
-  
-  // post data to /investments/export
-  await axios.post(`${config.investmentsServiceUrl}/investments/export`, {csv: formattedInvestments}, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }).catch((e) => {
-    console.error(e);
-    res.sendStatus(500);
-  });
-
-  // return data to /generate-report
-  res.set('Content-Type', 'text/csv');
-  res.send(formattedInvestments);
-
+  }
 });
 
 app.listen(config.port, (err) => {

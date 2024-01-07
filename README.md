@@ -15,6 +15,8 @@
 
 #### How might you make this service more secure?
 
+1. Add rate limiting
+
 1. Use SSL to encrypt the returned data
 
 1. Make sure packages are up-to-date
@@ -22,8 +24,6 @@
   
 
 #### How would you make this solution scale to millions of records?
-
-1. Add rate limiting
 
 1. Use Loading balancing & CDNs
 
@@ -41,8 +41,7 @@
 
 1. Use Ramda
 
-1. Handle unavailable data / granular error handling e.g. if investments are available but company names are not, useful data could still be returned
-
+1. If endpoint should return any available data (rather than fail if any of its requests fail), I would use granular error handling rather than the try/catch block. This could return the available data and a list of any failed processes.
 
 
 
